@@ -1,0 +1,5 @@
+Django>=5.0,<6.0
+gunicorn>=22.0
+whitenoise>=6.6
+# The shared recommendation model (same code as the analysis repository).
+animrec @ git+https://github.com/Collinsthe4th/anime-recommendation-system.git@main
