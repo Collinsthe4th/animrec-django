@@ -1,0 +1,111 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if matched %}Like {{ matched }}? · {% endif %}AnimRec</title>
+  <meta name="description" content="Find anime similar to a show you love, or describe what you are in the mood for.">
+  <link rel="stylesheet" href="{% static 'recommender/style.css' %}">
+</head>
+<body>
+  <header class="hero">
+    <a class="brand" href="{% url 'recommender:home' %}">Anim<span>Rec</span></a>
+    <p class="tagline">Find your next anime from {{ catalogue_size }} classics. Pick a show you love, or describe what you are in the mood for.</p>
+
+    <form class="search" method="get" action="{% url 'recommender:home' %}" autocomplete="off">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" class="tab {% if not describe %}active{% endif %}" data-mode="title" aria-selected="{% if not describe %}true{% else %}false{% endif %}">By title</button>
+        <button type="button" role="tab" class="tab {% if describe %}active{% endif %}" data-mode="describe" aria-selected="{% if describe %}true{% else %}false{% endif %}">By description</button>
+      </div>
+
+      <div class="field" data-field="title" {% if describe %}hidden{% endif %}>
+        <label for="title">Anime title</label>
+        <input id="title" name="title" type="text" value="{{ title }}" placeholder="e.g. Cowboy Bebop" list="title-suggestions" maxlength="300">
+        <datalist id="title-suggestions"></datalist>
+      </div>
+
+      <div class="field" data-field="describe" {% if not describe %}hidden{% endif %}>
+        <label for="describe">Describe it</label>
+        <input id="describe" name="describe" type="text" value="{{ describe }}" placeholder="e.g. space bounty hunters with a jazz soundtrack" maxlength="300" {% if not describe %}disabled{% endif %}>
+      </div>
+
+      <div class="row">
+        <div class="field small">
+          <label for="genre">Genre</label>
+          <select id="genre" name="genre">
+            <option value="">Any genre</option>
+            {% for g in genres %}<option value="{{ g }}" {% if g == genre %}selected{% endif %}>{{ g }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field small">
+          <label for="k">Results</label>
+          <select id="k" name="k">
+            <option value="5" {% if k == 5 %}selected{% endif %}>5</option>
+            <option value="10" {% if k == 10 %}selected{% endif %}>10</option>
+            <option value="20" {% if k == 20 %}selected{% endif %}>20</option>
+          </select>
+        </div>
+        <button class="go" type="submit">Recommend</button>
+      </div>
+    </form>
+  </header>
+
+  <main>
+    {% if error %}
+      <div class="notice" role="alert">
+        <p>{{ error }}</p>
+        {% if suggestions %}<p>Did you mean:
+          {% for s in suggestions %}<a href="?title={{ s|urlencode }}">{{ s }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}?</p>{% endif %}
+      </div>
+    {% endif %}
+
+    {% if results is not None %}
+      <h2 class="results-title">
+        {% if matched %}Because you liked <em>{{ matched }}</em>{% else %}Matches for “{{ describe }}”{% endif %}
+        {% if genre %}<span class="pill">{{ genre }} only</span>{% endif %}
+      </h2>
+      {% if results %}
+      <ol class="cards">
+        {% for r in results %}
+        <li class="card">
+          <div class="card-head">
+            <span class="rank">{{ forloop.counter }}</span>
+            <h3><a href="?title={{ r.title|urlencode }}" title="Find shows like this one">{{ r.title }}</a></h3>
+            <span class="score" title="Community score">★ {{ r.score|floatformat:0 }}</span>
+          </div>
+          <div class="meter" aria-label="Similarity {{ r.similarity }}"><span style="width: {% widthratio r.similarity 1 100 %}%"></span></div>
+          <p class="why">
+            {% if r.shared_genres %}Shares {{ r.shared_genres|join:", " }}.{% endif %}
+            {% if matched %}Story match {{ r.synopsis_similarity|floatformat:2 }} · genre match {{ r.genre_similarity|floatformat:2 }}{% endif %}
+          </p>
+          <p class="synopsis">{{ r.synopsis|truncatewords:45 }}</p>
+          <p class="tags">{% for g in r.genres %}<span>{{ g }}</span>{% endfor %}{% if r.episodes %}<span class="eps">{{ r.episodes }} ep</span>{% endif %}</p>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+        <p class="notice">No titles match that combination. Try “Any genre”.</p>
+      {% endif %}
+    {% else %}
+      <section class="starters">
+        <h2>Try one of these</h2>
+        <p>
+          <a href="?title=Cowboy+Bebop">Cowboy Bebop</a>
+          <a href="?title=Shin+Seiki+Evangelion">Evangelion</a>
+          <a href="?title=SLAM+DUNK">Slam Dunk</a>
+          <a href="?title=Love+Hina">Love Hina</a>
+          <a href="?describe=a+detective+solving+mysteries">“a detective solving mysteries”</a>
+        </p>
+      </section>
+    {% endif %}
+  </main>
+
+  <footer>
+    Built by Collins Akagha · content-based model from
+    <a href="https://github.com/Collinsthe4th/anime-recommendation-system">anime-recommendation-system</a> ·
+    <a href="{% url 'recommender:api_recommend' %}?title=Trigun&amp;k=5">JSON API</a>
+  </footer>
+
+  <script src="{% static 'recommender/app.js' %}" defer></script>
+</body>
+</html>
